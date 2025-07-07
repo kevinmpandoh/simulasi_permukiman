@@ -22,7 +22,7 @@ def load_shapefiles(folder_path):
     return shapefiles
 
 
-def convert_to_grid(gdf, resolution=100, bounds=None):
+def convert_to_grid(gdf, resolution=150, bounds=None):
     if gdf is None or gdf.empty:
         print("⚠️ GeoDataFrame kosong!")
         return None
@@ -33,7 +33,9 @@ def convert_to_grid(gdf, resolution=100, bounds=None):
         return None
 
     # 🔍 Filter hanya 'Kawasan Terbangun' (case-insensitive)
-    gdf = gdf[gdf['Filter'].astype(str).str.lower().str.strip() == 'kawasan terbangun'].copy()
+    # gdf = gdf[gdf['Filter'].astype(str).str.lower().str.strip() == 'kawasan terbangun'].copy()
+    gdf = gdf[gdf["Filter"] == "Kawasan Terbangun"]
+
     
 
     if gdf.empty:
@@ -116,3 +118,15 @@ def get_common_bounds(gdf_dict):
     ymax = max(ymax_list)
 
     return xmin, ymin, xmax, ymax
+
+def load_precomputed_grids(folder="precomputed_grids/"):
+    """
+    Memuat grid .npy yang telah disimpan sebelumnya.
+    Return: dict {2020: grid_array, ...}
+    """
+    grids = {}
+    for file in os.listdir(folder):
+        if file.endswith(".npy") and file.startswith("grid_"):
+            year = int(file.split("_")[1].split(".")[0])
+            grids[year] = np.load(os.path.join(folder, file))
+    return grids

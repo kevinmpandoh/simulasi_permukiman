@@ -30,28 +30,32 @@ def run_ca_model(grid, threshold=5):
 
     return new_grid
 
-@st.cache_data
-def learn_threshold_from_history(_gdf_by_year, bounds):
+def learn_threshold_from_history(precomputed_grids):
     """
-    Mencari threshold terbaik dari tahun 2020–2024 berdasarkan error terkecil.
+    Menemukan threshold terbaik untuk CA berdasarkan data grid tahun 2020–2024.
+    Membandingkan hasil prediksi terhadap grid aktual, lalu mencari threshold dengan error terkecil.
     """
     thresholds = range(1, 9)
     total_errors = {}
 
     for t in thresholds:
         total_error = 0
-        for year in range(2020, 2024):
-            grid_start = convert_to_grid(_gdf_by_year[year], bounds=bounds)
-            grid_target = convert_to_grid(_gdf_by_year[year + 1], bounds=bounds)
+        for year in range(2020, 2024):  # Tahun 2020–2023
+            grid_start = precomputed_grids.get(year)
+            grid_target = precomputed_grids.get(year + 1)
+
             if grid_start is None or grid_target is None:
                 continue
+
             pred = run_ca_model(grid_start, threshold=t)
-            error = np.sum(np.abs(pred - grid_target))
+            error = np.sum(np.abs(pred - grid_target))  # Total sel yang salah
             total_error += error
+
         total_errors[t] = total_error
 
     best_threshold = min(total_errors, key=total_errors.get)
     return best_threshold
+
 
 @st.cache_data
 def run_ca_model_multistep(initial_grid, threshold, steps):
