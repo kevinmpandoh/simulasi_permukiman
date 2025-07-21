@@ -8,3 +8,4 @@ Pillow
 shapely
 streamlit-folium
 rasterio
+scipy
