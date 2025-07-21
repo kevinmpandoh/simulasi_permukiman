@@ -4,7 +4,6 @@ import geopandas as gpd
 import os
 import numpy as np
 from rasterio import features
-from shapely.geometry import box
 from rasterio.transform import from_origin
 
 
@@ -22,7 +21,7 @@ def load_shapefiles(folder_path):
     return shapefiles
 
 
-def convert_to_grid(gdf, resolution=150, bounds=None):
+def convert_to_grid(gdf, resolution=100, bounds=None):
     if gdf is None or gdf.empty:
         print("⚠️ GeoDataFrame kosong!")
         return None
@@ -84,7 +83,6 @@ def convert_to_grid(gdf, resolution=150, bounds=None):
     shapes = ((geom, 1) for geom in gdf.geometry)
 
     try:
-        from rasterio import features
         raster = features.rasterize(
             shapes=shapes,
             out_shape=(height, width),
@@ -119,7 +117,7 @@ def get_common_bounds(gdf_dict):
 
     return xmin, ymin, xmax, ymax
 
-def load_precomputed_grids(folder="precomputed_grids/"):
+def load_precomputed_grids(folder="data/grid"):
     """
     Memuat grid .npy yang telah disimpan sebelumnya.
     Return: dict {2020: grid_array, ...}

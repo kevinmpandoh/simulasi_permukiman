@@ -3,8 +3,8 @@ import numpy as np
 from modules.preprocessing import load_shapefiles, convert_to_grid, get_common_bounds
 
 # Folder shapefile dan folder output grid
-shapefile_dir = "data/"
-output_dir = "precomputed_grids/"
+shapefile_dir = "data/shapefile"
+output_dir = "data/grid"
 os.makedirs(output_dir, exist_ok=True)
 
 # Load semua shapefile

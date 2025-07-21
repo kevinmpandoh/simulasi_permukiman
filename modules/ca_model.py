@@ -4,8 +4,6 @@ import numpy as np
 from scipy.ndimage import convolve
 import streamlit as st
 
-from modules.preprocessing import convert_to_grid, get_common_bounds
-
 def run_ca_model(grid, threshold=5):
     """
     Menjalankan simulasi CA satu langkah untuk prediksi permukiman.
@@ -38,6 +36,8 @@ def learn_threshold_from_history(precomputed_grids):
     thresholds = range(1, 9)
     total_errors = {}
 
+    
+
     for t in thresholds:
         total_error = 0
         for year in range(2020, 2024):  # Tahun 2020–2023
@@ -53,6 +53,8 @@ def learn_threshold_from_history(precomputed_grids):
 
         total_errors[t] = total_error
 
+    # for t, err in total_errors.items():
+    #     print(f"Threshold {t}: Total error = {err}")
     best_threshold = min(total_errors, key=total_errors.get)
     return best_threshold
 
