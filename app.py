@@ -1,3 +1,4 @@
+# app.py
 import streamlit as st
 
 from modules.ca_model import learn_threshold_from_history
@@ -93,40 +94,110 @@ elif st.session_state.page == "visualisasi":
         else:
             st.warning("Data grid untuk tahun tersebut tidak tersedia.")
 
-
 # ==== Halaman Prediksi ====
 elif st.session_state.page == "prediksi":
-    left, center, right = st.columns([1, 2, 1])
+    left, center, right = st.columns([1, 6, 1])
     with center:
         pred_year = st.session_state.selected_year
         st.title(f"Prediksi Permukiman Tahun {pred_year}")
 
         common_bounds = get_common_bounds(gdf_by_year)
 
+        # --- Belajar threshold ---
         with st.spinner("🔍 Belajar threshold dari data historis..."):
             precomputed_grids = load_precomputed_grids()
             threshold = learn_threshold_from_history(precomputed_grids)
             st.success(f"📊 Threshold optimal hasil pelatihan: {threshold}")
 
+        # --- Ambil grid 2024 sebagai baseline ---
         with st.spinner("🔄 Mengonversi permukiman 2024 ke grid..."):
-            precomputed_grids = load_precomputed_grids()
             grid_2024 = precomputed_grids[2024]
 
+        # ===========================================
+        #       TAHUN SEBELUMNYA (Dynamic)
+        # ===========================================
+        prev_year = pred_year - 1
+
+        if prev_year in precomputed_grids:
+            grid_prev = precomputed_grids[prev_year]
+        else:
+            # Jika tahun sebelumnya > 2024 → harus prediksi dulu
+            steps_prev = prev_year - 2024
+            grid_prev = run_ca_model_multistep(grid_2024, threshold, steps_prev)
+
+        # ===========================================
+        #       PREDIKSI GRID TAHUN TUJUAN
+        # ===========================================
         steps = pred_year - 2024
         with st.spinner(f"🚀 Menjalankan prediksi hingga tahun {pred_year} ({steps} langkah)..."):
             predicted_grid = run_ca_model_multistep(grid_2024, threshold, steps)
 
         st.markdown("---")
-    
         st.button("⬅️ Kembali ke Beranda", on_click=back_to_home)
-        show_prediction_map(grid_2024, predicted_grid, f"Prediksi Permukiman Tahun {pred_year}", bounds=common_bounds)
 
-         # Tambahkan keterangan
+        # =============================
+        #  TAMPILKAN PETA 2 TAHUN
+        # =============================
+        col1, col2 = st.columns(2)
+
+        with col1:
+            show_prediction_map(
+                grid_prev,
+                grid_prev,
+                f"Permukiman Tahun {prev_year}",
+                bounds=common_bounds
+            )
+
+        with col2:
+            show_growth_comparison(
+                grid_prev,
+                predicted_grid,
+                f"Prediksi Tahun {pred_year}",
+                bounds=common_bounds
+            )
+
+        # --- Keterangan ---
         st.markdown("#### Keterangan:")
         st.markdown("""
         <ul>            
-            <li><span style="color:green;"><strong>Hijau</strong></span>: Baru terbangun </li>
-            <li><span style="color:red;"><strong>Merah</strong></span>: Tetap terbangun </li>
+            <li><span style="color:green;"><strong>Hijau</strong></span>: Baru terbangun</li>
+            <li><span style="color:red;"><strong>Merah</strong></span>: Tetap terbangun</li>
         </ul>
-        """, unsafe_allow_html=True)    
+        """, unsafe_allow_html=True)
+
+# ==== Halaman Prediksi ====
+# elif st.session_state.page == "prediksi":
+    # left, center, right = st.columns([1, 2, 1])
+    # with center:
+    #     pred_year = st.session_state.selected_year
+    #     st.title(f"Prediksi Permukiman Tahun {pred_year}")
+
+    #     common_bounds = get_common_bounds(gdf_by_year)
+
+    #     with st.spinner("🔍 Belajar threshold dari data historis..."):
+    #         precomputed_grids = load_precomputed_grids()
+    #         threshold = learn_threshold_from_history(precomputed_grids)
+    #         st.success(f"📊 Threshold optimal hasil pelatihan: {threshold}")
+
+    #     with st.spinner("🔄 Mengonversi permukiman 2024 ke grid..."):
+    #         precomputed_grids = load_precomputed_grids()
+    #         grid_2024 = precomputed_grids[2024]
+
+    #     steps = pred_year - 2024
+    #     with st.spinner(f"🚀 Menjalankan prediksi hingga tahun {pred_year} ({steps} langkah)..."):
+    #         predicted_grid = run_ca_model_multistep(grid_2024, threshold, steps)
+
+    #     st.markdown("---")
+    
+    #     st.button("⬅️ Kembali ke Beranda", on_click=back_to_home)
+    #     show_prediction_map(grid_2024, predicted_grid, f"Prediksi Permukiman Tahun {pred_year}", bounds=common_bounds)
+
+    #      # Tambahkan keterangan
+    #     st.markdown("#### Keterangan:")
+    #     st.markdown("""
+    #     <ul>            
+    #         <li><span style="color:green;"><strong>Hijau</strong></span>: Baru terbangun </li>
+    #         <li><span style="color:red;"><strong>Merah</strong></span>: Tetap terbangun </li>
+    #     </ul>
+    #     """, unsafe_allow_html=True)    
 

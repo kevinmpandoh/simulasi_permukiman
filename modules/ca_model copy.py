@@ -16,29 +16,15 @@ def run_ca_model(grid, threshold=5):
         [1, 1, 1]
     ])
 
-    # hitung tetangga terbangun (kelas 1)
-    built_neighbors = convolve((grid == 1).astype(int), kernel, mode='constant', cval=0)
+    # Hitung jumlah tetangga yang sudah terbangun
+    neighbors = convolve(grid, kernel, mode='constant', cval=0)
 
-    # syarat tumbuh
-
+    # Aturan pertumbuhan CA: hanya untuk sel kosong (0) dengan tetangga ≥ threshold
+    growth = (grid == 0) & (neighbors >= threshold)
 
     # Salin grid lama, ubah yang tumbuh jadi 1
     new_grid = grid.copy()
-    open_growth = (grid == 0) & (built_neighbors >= threshold)
-    new_grid[open_growth] = 1
-
-    # --- Rule 2: Vegetasi (3) -- lebih sulit berubah ---
-    veg_growth = (grid == 3) & (built_neighbors >= threshold + 2)
-    new_grid[veg_growth] = 1
-
-    # --- Rule 3: Air tetap ---
-    new_grid[grid == 2] = 2
-    # new_grid[growth] = 1
-
-    # new_grid[grid == 2] = 2
-    
-    # grid 3 (vegetasi) bisa dibiarkan tetap, atau:
-    # new_grid[grid == 3] = 3
+    new_grid[growth] = 1
 
     return new_grid
 
@@ -47,7 +33,7 @@ def learn_threshold_from_history(precomputed_grids):
     Menemukan threshold terbaik untuk CA berdasarkan data grid tahun 2020–2024.
     Membandingkan hasil prediksi terhadap grid aktual, lalu mencari threshold dengan error terkecil.
     """
-    thresholds = range(1, 5)
+    thresholds = range(2, 9)
     total_errors = {}
 
     
@@ -62,24 +48,18 @@ def learn_threshold_from_history(precomputed_grids):
                 continue
 
             pred = run_ca_model(grid_start, threshold=t)
-            # error = np.sum(np.abs(pred - grid_target))  # Total sel yang salah
-            # error = np.sum((pred == 1) != (grid_target == 1))
-            error_fp = np.sum((pred == 1) & (grid_target != 1))   # prediksi salah (bangunan palsu)
-            error_fn = np.sum((pred != 1) & (grid_target == 1))   # gagal memprediksi perkembangan
-            error = error_fp + error_fn
-
+            error = np.sum(np.abs(pred - grid_target))  # Total sel yang salah
             total_error += error
-
-            
+            print(f"Threshold {t}, Tahun {year} -> {year+1}: Error = {error}")
 
         total_errors[t] = total_error
-  
+        print(f"Threshold {t}: Total error = {total_error}")
 
     # for t, err in total_errors.items():
     
     #     print(f"Threshold {t}: Total error = {err}")
-    return min(total_errors, key=total_errors.get)
-    
+    best_threshold = min(total_errors, key=total_errors.get)
+    return best_threshold
 
 
 @st.cache_data

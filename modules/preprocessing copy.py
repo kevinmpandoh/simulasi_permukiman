@@ -23,6 +23,8 @@ def load_shapefiles(folder_path):
 
 def convert_to_grid(gdf, resolution=100, bounds=None):
 
+
+
     if gdf is None or gdf.empty:
         print("⚠️ GeoDataFrame kosong!")
         return None
@@ -32,17 +34,9 @@ def convert_to_grid(gdf, resolution=100, bounds=None):
         print("❌ Kolom 'Filter' tidak ditemukan dalam data.")
         return None
 
-    FILTER_MAP = {
-        "Kawasan Terbangun": 1,
-        "Badan Air": 2, 
-        "Sungai": 2, 
-        "Kawasan Hijau": 3,
-        "Kawasan Ruang Terbuka Non Hijau": 0,
-        "Kawasan Terbuka Non Hijau": 0
-    }
-
-    gdf["class"] = gdf["Filter"].map(FILTER_MAP)
-    gdf = gdf.dropna(subset=["class"])
+    # 🔍 Filter hanya 'Kawasan Terbangun' (case-insensitive)
+    # gdf = gdf[gdf['Filter'].astype(str).str.lower().str.strip() == 'kawasan terbangun'].copy()
+    gdf = gdf[gdf["Filter"] == "Kawasan Terbangun"]
 
     
 
@@ -89,7 +83,7 @@ def convert_to_grid(gdf, resolution=100, bounds=None):
     
     transform = from_origin(xmin, ymax, resolution, resolution)
 
-    shapes = ((geom, int(cls)) for geom, cls in zip(gdf.geometry, gdf["class"]))
+    shapes = ((geom, 1) for geom in gdf.geometry)
 
     try:
         raster = features.rasterize(
