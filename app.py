@@ -3,7 +3,7 @@ import streamlit as st
 
 from modules.ca_model import learn_threshold_from_history
 from modules.ca_model import run_ca_model_multistep
-from modules.visualization import show_prediction_map, plot_trend, show_growth_comparison
+from modules.visualization import show_prediction_map, plot_trend, show_base_map, show_comparison_map, show_growth_comparison
 from modules.preprocessing import get_common_bounds, load_precomputed_grids, load_shapefiles
 
 st.set_page_config(page_title="Simulasi Permukiman", layout="wide")
@@ -77,11 +77,11 @@ elif st.session_state.page == "visualisasi":
 
             with col1:
                 st.markdown(f"### Permukiman Tahun {view_year - 1}")
-                show_prediction_map(grid_before, grid_before, "", bounds=common_bounds)
+                show_base_map(grid_before, bounds=common_bounds)
 
             with col2:
                 st.markdown(f"### Permukiman Tahun {view_year}")
-                show_growth_comparison(grid_before, grid_after, "", bounds=common_bounds)                
+                show_comparison_map(grid_before, grid_after, "", bounds=common_bounds)                
                     
             # Tambahkan keterangan
             st.markdown("#### Keterangan:")

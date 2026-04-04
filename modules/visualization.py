@@ -250,61 +250,134 @@ def show_growth_comparison(before, after, title, bounds=None):
     st.markdown(f"### {title}")
     st_folium(m, width=700, height=500)
 
-# def show_growth_comparison(before, after, title, bounds=None, resolution=100):
-#     if before is None or after is None:
-#         st.error("Grid tidak valid.")
-#         return
+def show_base_map(before, bounds=None):
+    if before is None:
+        st.error("Grid tidak valid.")
+        return
 
-#     comparison_map = np.zeros_like(before)
+    # === Mask ===    
+    base_mask = ((before == 1)).astype(np.uint8)    # Semua yang terbangun di salah satu tahun 
 
-#     # Tetap terbangun
-#     comparison_map[(before == 1) & (after == 1)] = 1  # merah
+    # === Fungsi bantu buat overlay transparan ===
+    def create_overlay_image(mask, color):
+        cmap = mcolors.ListedColormap(['none', color])
+        norm = mcolors.BoundaryNorm([0, 0.5, 1], cmap.N)
+        fig, ax = plt.subplots(figsize=(8, 8), dpi=100)
+        ax.imshow(mask, cmap=cmap, norm=norm)
+        ax.axis("off")
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', transparent=True, bbox_inches='tight', pad_inches=0)
+        plt.close(fig)
+        buf.seek(0)
+        return 'data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode()
 
-#     # Baru terbangun
-#     comparison_map[(before == 0) & (after == 1)] = 2  # hijau
+    # Sesuaikan warna dengan keterangan legend Anda    
+    overlay_base = create_overlay_image(base_mask, "red")  # Semua terbangun = Abu-abu muda    
 
-#     # Warna:
-#     cmap = mcolors.ListedColormap(["lightgrey", "red", "green"])
-#     norm = mcolors.BoundaryNorm([0, 0.5, 1.5, 2.5], cmap.N)
+    # === Transformasi koordinat EPSG:32651 → WGS84 ===
+    if bounds is None:
+        st.error("Bounds tidak tersedia.")
+        return
 
-#     fig, ax = plt.subplots(figsize=(8, 8), dpi=100)
-#     ax.imshow(comparison_map, cmap=cmap, norm=norm)
-#     ax.axis("off")
+    transformer = Transformer.from_crs("EPSG:32651", "EPSG:4326", always_xy=True)
+    xmin, ymin, xmax, ymax = bounds
+    (xmin_lon, ymin_lat) = transformer.transform(xmin, ymin)
+    (xmax_lon, ymax_lat) = transformer.transform(xmax, ymax)
+    bounds_latlon = [[ymin_lat, xmin_lon], [ymax_lat, xmax_lon]]
 
-#     buf = io.BytesIO()
-#     plt.savefig(buf, format="png", transparent=True, bbox_inches="tight", pad_inches=0)
-#     plt.close(fig)
-#     buf.seek(0)
-#     overlay_image = Image.open(buf)
+    # === Tampilkan di peta interaktif ===
+    m = folium.Map(
+        location=[(ymin_lat + ymax_lat)/2, (xmin_lon + xmax_lon)/2],
+        zoom_start=12,
+        tiles="CartoDB positron"
+    )
 
-#     # Konversi bounds ke EPSG:4326
-#     if bounds is None:
-#         st.error("Bounds tidak tersedia.")
-#         return
+    folium.raster_layers.ImageOverlay(
+        image=overlay_base,
+        bounds=bounds_latlon,
+        opacity=0.7, # Opacity rendah agar tidak mengganggu warna lain
+        name="Semua Terbangun",
+        zindex=2
+    ).add_to(m)
 
-#     xmin, ymin, xmax, ymax = bounds
-#     transformer = Transformer.from_crs("EPSG:32651", "EPSG:4326", always_xy=True)
-#     (xmin_lon, ymin_lat) = transformer.transform(xmin, ymin)
-#     (xmax_lon, ymax_lat) = transformer.transform(xmax, ymax)
-#     bounds_latlon = [[ymin_lat, xmin_lon], [ymax_lat, xmax_lon]]
+    folium.LayerControl().add_to(m) 
+    st_folium(m, width=700, height=500)
 
-#     png_data = buf.getvalue()
-#     data_url = "data:image/png;base64," + base64.b64encode(png_data).decode("utf-8")
+def show_comparison_map(before, after, title="", bounds=None):
+    if before is None or after is None:
+        st.error("Grid tidak valid.")
+        return
 
-#     # Tampilkan peta di Streamlit menggunakan Folium
-#     m = folium.Map(
-#         location=[(ymin_lat + ymax_lat) / 2, (xmin_lon + xmax_lon) / 2],
-#         zoom_start=12,
-#         tiles="CartoDB positron"
-#     )
+    # === Mask ===
+    mask_still = ((before == 1) & (after == 1)).astype(np.uint8)   # Tetap terbangun -> Merah
+    mask_new = ((before == 0) & (after == 1)).astype(np.uint8)     # Baru tumbuh -> Hijau
+    
+    # Mask KHUSUS untuk area yang ada di tahun sebelumnya tapi "hilang" di data tahun ini
+    mask_lost = ((after == 1) ).astype(np.uint8)    # Hilang / Beda Data -> Abu-abu
 
-#     folium.raster_layers.ImageOverlay(
-#         image=data_url,
-#         bounds=bounds_latlon,
-#         opacity=0.7,
-#         name="Perubahan Permukiman"
-#     ).add_to(m)
+    # === Fungsi bantu buat overlay transparan ===
+    def create_overlay_image(mask, color):
+        cmap = mcolors.ListedColormap(['none', color])
+        norm = mcolors.BoundaryNorm([0, 0.5, 1], cmap.N)
+        fig, ax = plt.subplots(figsize=(8, 8), dpi=100)
+        ax.imshow(mask, cmap=cmap, norm=norm)
+        ax.axis("off")
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', transparent=True, bbox_inches='tight', pad_inches=0)
+        plt.close(fig)
+        buf.seek(0)
+        return 'data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode()
 
-#     folium.LayerControl().add_to(m)
-#     st.markdown(f"### {title}")
-#     st_folium(m, width=700, height=500)
+    # Buat overlay gambar
+    overlay_still = create_overlay_image(mask_still, "red") 
+    overlay_new = create_overlay_image(mask_new, "green")  
+    overlay_lost = create_overlay_image(mask_lost, "green") 
+
+    # === Transformasi koordinat EPSG:32651 → WGS84 ===
+    if bounds is None:
+        st.error("Bounds tidak tersedia.")
+        return
+
+    transformer = Transformer.from_crs("EPSG:32651", "EPSG:4326", always_xy=True)
+    xmin, ymin, xmax, ymax = bounds
+    (xmin_lon, ymin_lat) = transformer.transform(xmin, ymin)
+    (xmax_lon, ymax_lat) = transformer.transform(xmax, ymax)
+    bounds_latlon = [[ymin_lat, xmin_lon], [ymax_lat, xmax_lon]]
+
+    # === Tampilkan di peta interaktif ===
+    m = folium.Map(
+        location=[(ymin_lat + ymax_lat)/2, (xmin_lon + xmax_lon)/2],
+        zoom_start=12,
+        tiles="CartoDB positron"
+    )
+
+    # ⬜ Area yang hilang di data terbaru (Abu-abu)
+    folium.raster_layers.ImageOverlay(
+        image=overlay_lost,
+        bounds=bounds_latlon,
+        opacity=0.4, 
+        name="Hilang (Beda Data)"
+    ).add_to(m)
+
+    # 🟥 Tetap terbangun (1→1) → MERAH
+    folium.raster_layers.ImageOverlay(
+        image=overlay_still,
+        bounds=bounds_latlon,
+        opacity=0.7, 
+        name="Tetap Terbangun"
+    ).add_to(m)
+
+    # 🟩 Baru tumbuh (0→1) → HIJAU
+    folium.raster_layers.ImageOverlay(
+        image=overlay_new,
+        bounds=bounds_latlon,
+        opacity=0.9, # Opacity tinggi (0.9) agar titik hijau kecil dari 2024 sangat terlihat
+        name="Baru Terbangun"
+    ).add_to(m)
+
+    folium.LayerControl().add_to(m)
+    
+    if title:
+        st.markdown(f"### {title}")
+    st_folium(m, width=700, height=500)
+    
