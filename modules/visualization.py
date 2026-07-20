@@ -49,7 +49,7 @@ def show_prediction_map(before, after, title, bounds=None):
         cmap = mcolors.ListedColormap(['none', color])
         norm = mcolors.BoundaryNorm([0, 0.5, 1], cmap.N)
         fig, ax = plt.subplots(figsize=(8, 8), dpi=100)
-        ax.imshow(mask, cmap=cmap, norm=norm)
+        ax.imshow(mask, cmap=cmap, norm=norm, interpolation='nearest')
         ax.axis("off")
         buf = io.BytesIO()
         plt.savefig(buf, format='png', transparent=True, bbox_inches='tight', pad_inches=0)
@@ -81,29 +81,22 @@ def show_prediction_map(before, after, title, bounds=None):
         zoom_start=12,
         tiles="CartoDB positron"
     )
-
-    # 🏙️ Dasar (abu-abu)
-    folium.raster_layers.ImageOverlay(
-        image=overlay_base,
-        bounds=bounds_latlon,
-        opacity=0.3,
-        name="Permukiman 2024 (Dasar)"
-    ).add_to(m)
-
-    # 🟩 Baru tumbuh (0→1) → HIJAU → tampilkan dulu agar tidak tertutup
-    folium.raster_layers.ImageOverlay(
-        image=overlay_new,
-        bounds=bounds_latlon,
-        opacity=0.6,
-        name="Baru Terbangun (0→1)"
-    ).add_to(m)
+    m.get_root().header.add_child(folium.Element("<style>.leaflet-image-layer { image-rendering: pixelated; image-rendering: crisp-edges; }</style>"))
 
     # 🟥 Tetap terbangun (1→1) → MERAH
     folium.raster_layers.ImageOverlay(
         image=overlay_still,
         bounds=bounds_latlon,
-        opacity=0.5,
+        opacity=0.7,
         name="Tetap Terbangun (1→1)"
+    ).add_to(m)
+
+    # 🟩 Baru tumbuh (0→1) → HIJAU
+    folium.raster_layers.ImageOverlay(
+        image=overlay_new,
+        bounds=bounds_latlon,
+        opacity=0.8,
+        name="Baru Terbangun (0→1)"
     ).add_to(m)
 
     # # 🏙️ Lapisan dasar permukiman 2024
@@ -150,7 +143,7 @@ def plot_trend(gdf_by_year):
 
         # Pastikan CRS projected sebelum hitung area
         if not gdf.crs or not gdf.crs.is_projected:
-            gdf = gdf.to_crs(epsg=32751)
+            gdf = gdf.to_crs(epsg=32651)
 
         # Hitung luas total (m²) → konversi ke hektar (/10_000)
         total_area_ha = gdf.geometry.area.sum() / 10_000
@@ -200,7 +193,7 @@ def show_growth_comparison(before, after, title, bounds=None):
         cmap = mcolors.ListedColormap(['none', color])
         norm = mcolors.BoundaryNorm([0, 0.5, 1], cmap.N)
         fig, ax = plt.subplots(figsize=(8, 8), dpi=100)
-        ax.imshow(mask, cmap=cmap, norm=norm)
+        ax.imshow(mask, cmap=cmap, norm=norm, interpolation='nearest')
         ax.axis("off")
         buf = io.BytesIO()
         plt.savefig(buf, format='png', transparent=True, bbox_inches='tight', pad_inches=0)
@@ -228,6 +221,7 @@ def show_growth_comparison(before, after, title, bounds=None):
         zoom_start=12,
         tiles="CartoDB positron"
     )
+    m.get_root().header.add_child(folium.Element("<style>.leaflet-image-layer { image-rendering: pixelated; image-rendering: crisp-edges; }</style>"))
 
     # ✅ Tetap terbangun (1→1)
     folium.raster_layers.ImageOverlay(
@@ -263,7 +257,7 @@ def show_base_map(before, bounds=None):
         cmap = mcolors.ListedColormap(['none', color])
         norm = mcolors.BoundaryNorm([0, 0.5, 1], cmap.N)
         fig, ax = plt.subplots(figsize=(8, 8), dpi=100)
-        ax.imshow(mask, cmap=cmap, norm=norm)
+        ax.imshow(mask, cmap=cmap, norm=norm, interpolation='nearest')
         ax.axis("off")
         buf = io.BytesIO()
         plt.savefig(buf, format='png', transparent=True, bbox_inches='tight', pad_inches=0)
@@ -291,6 +285,7 @@ def show_base_map(before, bounds=None):
         zoom_start=12,
         tiles="CartoDB positron"
     )
+    m.get_root().header.add_child(folium.Element("<style>.leaflet-image-layer { image-rendering: pixelated; image-rendering: crisp-edges; }</style>"))
 
     folium.raster_layers.ImageOverlay(
         image=overlay_base,
@@ -313,14 +308,14 @@ def show_comparison_map(before, after, title="", bounds=None):
     mask_new = ((before == 0) & (after == 1)).astype(np.uint8)     # Baru tumbuh -> Hijau
     
     # Mask KHUSUS untuk area yang ada di tahun sebelumnya tapi "hilang" di data tahun ini
-    mask_lost = ((after == 1) ).astype(np.uint8)    # Hilang / Beda Data -> Abu-abu
+    mask_lost = ((before == 1) & (after == 0)).astype(np.uint8)    # Hilang / Beda Data -> Abu-abu
 
     # === Fungsi bantu buat overlay transparan ===
     def create_overlay_image(mask, color):
         cmap = mcolors.ListedColormap(['none', color])
         norm = mcolors.BoundaryNorm([0, 0.5, 1], cmap.N)
         fig, ax = plt.subplots(figsize=(8, 8), dpi=100)
-        ax.imshow(mask, cmap=cmap, norm=norm)
+        ax.imshow(mask, cmap=cmap, norm=norm, interpolation='nearest')
         ax.axis("off")
         buf = io.BytesIO()
         plt.savefig(buf, format='png', transparent=True, bbox_inches='tight', pad_inches=0)
@@ -331,7 +326,7 @@ def show_comparison_map(before, after, title="", bounds=None):
     # Buat overlay gambar
     overlay_still = create_overlay_image(mask_still, "red") 
     overlay_new = create_overlay_image(mask_new, "green")  
-    overlay_lost = create_overlay_image(mask_lost, "green") 
+    overlay_lost = create_overlay_image(mask_lost, "gray") 
 
     # === Transformasi koordinat EPSG:32651 → WGS84 ===
     if bounds is None:
@@ -350,14 +345,7 @@ def show_comparison_map(before, after, title="", bounds=None):
         zoom_start=12,
         tiles="CartoDB positron"
     )
-
-    # ⬜ Area yang hilang di data terbaru (Abu-abu)
-    folium.raster_layers.ImageOverlay(
-        image=overlay_lost,
-        bounds=bounds_latlon,
-        opacity=0.4, 
-        name="Hilang (Beda Data)"
-    ).add_to(m)
+    m.get_root().header.add_child(folium.Element("<style>.leaflet-image-layer { image-rendering: pixelated; image-rendering: crisp-edges; }</style>"))
 
     # 🟥 Tetap terbangun (1→1) → MERAH
     folium.raster_layers.ImageOverlay(
@@ -371,7 +359,7 @@ def show_comparison_map(before, after, title="", bounds=None):
     folium.raster_layers.ImageOverlay(
         image=overlay_new,
         bounds=bounds_latlon,
-        opacity=0.9, # Opacity tinggi (0.9) agar titik hijau kecil dari 2024 sangat terlihat
+        opacity=0.8, 
         name="Baru Terbangun"
     ).add_to(m)
 

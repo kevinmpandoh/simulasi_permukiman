@@ -55,7 +55,7 @@ def convert_to_grid(gdf, resolution=100, bounds=None):
         print("⚠️ CRS tidak tersedia.")
         return None
     if not gdf.crs.is_projected:
-        gdf = gdf.to_crs(epsg=32751)
+        gdf = gdf.to_crs(epsg=32651)
 
     # ✅ Perbaiki geometri invalid (penting!)
     if not gdf.geometry.is_valid.all():
